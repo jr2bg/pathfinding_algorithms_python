@@ -5,6 +5,7 @@
 import heapq 
 import csv
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 
 # clase del nodito
@@ -24,6 +25,10 @@ class Node():
         self.nodes_dist_dic = {}
         self.row = row
         self.col = col
+    
+    def coords(self):
+        # función que da las coordenadas del nodito
+        return (self.row, self.col)
         
     def isObstacle(self, isO):
         # determina si el nodo es libre o es un obstáculo
@@ -40,7 +45,6 @@ class Node():
         else:
             self.nodes_dist_dic[nodo] = 1
     
- 
     
     def init_single_source_node(self, row, col):
         # si el nodo corresponde al origen, la distancia es cero
@@ -59,14 +63,21 @@ class Node():
         #  distancia nodo adj >   distancia hasta ese nodo + peso
         if adj_node.d  > self.d + weight_s2ad:
             adj_node.d = self.d + weight_s2ad
-            heapq.heappush(Q, (adj_node.d, adj_node))
+            t = adj_node.d 
+            #print(adj_node.coords())
+            #print(Q)
+            #print(Q)
+            heapq.heappush(Q, (t, adj_node.coords()))
             adj_node.pre = self
+        return Q
     
     def relaxing_adjNodes(self, Q):
+        #print(self.nodes_dist_dic)
         for key, val in self.nodes_dist_dic.items():
-            self.relax(key, val, Q)
+            Q = self.relax(key, val, Q)
             #print(val)
             #print(key.pre.d)
+        return Q
         
 
 class Grid:
@@ -169,8 +180,8 @@ class Grid:
                     tmp.add_edge(self.space[i][j-1])
                 
                 ##### A BORRAR
-                print(len(tmp.nodes_dist_dic), end = " ")
-            print()
+                #print(len(tmp.nodes_dist_dic), end = " ")
+            #print()
         
     def init_single_source_grid(self, row_p, col_p):
         # iteración sobre todos los nodos para inicializar Dijkstra
@@ -186,17 +197,63 @@ def remove_nodes(Q, nodo):
     for i in range(len(Q)):
         if Q[i][1] == nodo:
             l.append(i)
+    #print(l)
     #los elimina del heap
-    for i in reversed(Q):
+    for i in reversed(l):
         Q.pop(i)
+    
+    # crea el heap
     heapq.heapify(Q)
     return Q
 
+def get_path(finishedDijkstra, r_target, c_target):
+    # función para tener el path desde el origen hasta el destino
+    pt = [(r_target,c_target)]
+    nodito = finishedDijkstra.space[r_target][c_target]
+    while nodito.pre:
+        # en posición 0 insertamos el nodo previo
+        nodito = nodito.pre
+        pt.insert(0, nodito.coords())
+    return pt
 
 
-def dijkstra():
+
+def dijkstra(generatedGrid, r_target, c_target, r_origin, c_origin):
     # empty heap
-    Q = []
+    # nodo de origen
+    s_node = generatedGrid.space[r_origin][c_origin]
+    Q = [(s_node.d, s_node.coords())]
+    heapq.heapify(Q)
+    S = []
+    
+    list_anims = []
+    fig = plt.figure()
+    while len(Q) > 0:
+        dist, cds = heapq.heappop(Q)
+        #print(cds)
+        nodito = generatedGrid.space[cds[0]][cds[1]]
+        
+        
+        generatedGrid.display[cds[0]][cds[1]] = 2
+        img = plt.imshow(generatedGrid.display)
+        list_anims.append([img])
+        #plt.pause(0.01)
+        #plt.show()
+        
+        S.append(cds)
+        if cds == (r_target, c_target):
+            break
+        #print(S)
+        Q = nodito.relaxing_adjNodes(Q)
+        #print(Q)
+        # removemos nodos repetidos, esto es, nodos en S
+        for cons_node in S:
+            print(cons_node)
+            Q = remove_nodes(Q, cons_node)
+    ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True, repeat_delay=1000)
+    writergif = animation.PillowWriter(fps=5)
+    ani.save('filename.gif',writer=writergif)
+    return S, list_anims
 
 #nodo1 = Node(0,0)
 #nodo2 = Node(1,1)
@@ -242,10 +299,43 @@ def dijkstra():
 #### procedimiento: con la longitud de la lista de adyacencia
 ####     se obtendrán todos los vecinos
 ####################################################
+#path_csv = "maze_tst.csv"
+#espacio = Grid(0,0)
+#espacio.add_obst_csv(path_csv, obst = "0")
+## generación de las edges
+#espacio.generate_edges()
+## RESULTADO: COMPLETADO
+## Cambios: se imprimió la longitud de la lista de adyacencia, pero se borrará
+
+####################################################
+####
+#### TEST 5
+####
+#### Obj: probar que el algos de Dijkstra funciona
+#### procedimiento: probar dijkstra
+####################################################
+#print(type(1.5))
 path_csv = "maze_tst.csv"
 espacio = Grid(0,0)
 espacio.add_obst_csv(path_csv, obst = "0")
-# generación de las edges
 espacio.generate_edges()
-## RESULTADO: COMPLETADO
-## Cambios: se imprimió la longitud de la lista de adyacencia, pero se borrará
+# inicializamos los nodos
+r_target= 31 
+c_target=  1
+r_origin= 41
+c_origin=  1
+
+espacio.init_single_source_grid(r_origin, c_origin)
+S, list_anims = dijkstra(espacio, r_target, c_target, r_origin, c_origin)
+
+print(get_path(espacio,r_target, c_target))
+#fig = plt.figure()
+#ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True,
+                                #repeat_delay=1000)
+#Writer = animation.writers['ffmpeg']
+#writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+#ani.save("test_dijkstra.mp4", writer = writer)
+plt.show()
+#writergif = animation.PillowWriter(fps=30)
+#ani.save('filename.gif',writer=writergif)
+#print(S)
