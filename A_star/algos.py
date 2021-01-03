@@ -13,15 +13,6 @@ import matplotlib.animation as animation
 # podemos determinar si hay otros nodos
 class Node():
     def __init__(self, row, col):
-        #self.up = None
-        #self.down = None
-        #self.left = None
-        #self.right = None
-        #self.UR = None
-        #self.UL = None
-        #self.DR = None
-        #self.DL = None
-
         self.nodes_dist_dic = {}
         self.row = row
         self.col = col
@@ -50,32 +41,60 @@ class Node():
         # si el nodo corresponde al origen, la distancia es cero
         if row == self.row and col == self.col:
             self.d = 0
+            self.g = 0
+            # self.hd = None  # <- puede que no se requiera
         # si no, entonces la distancia es cero
         else:
             self.d = float("inf")
+            self.g = float("inf")
+            # heuristic distance
+            self.hd = None
         # nodo predecesor
         self.pre = None
 
 
     # add the relaxed nodes to Q
-    def relax(self, adj_node, weight_s2ad, opn, h):
+    def relax(self, r_target, c_target, adj_node, weight_s2ad, opn, h):
         '''
         método para encontrar la relajación de los nodos adjacentes a self que
         considera ya la heurística a emplear
 
+        r_target -> fila del target (0-based)
+        c_target -> columna del target (0-based)
         adj_node -> un nodo adyacente a self
         weight_s2ad -> peso de la arista desde self a adj_node
         opn -> heap correspondiente a los pesos acumulados para las aristas
         h -> heurística, en este caso emplearemos la distancia de Manhattan
         '''
 
-        # distancia estimada
-        estimated = h(r_target, c_target, r_origin, c_origin)
-        
+
+
+        # si no se había calculado previamente la distancia heurística
+        if not adj_node.hd:
+            # fila y columna asociados a adj_node
+            r_nodo = adj_node.row
+            c_nodo = adj_node.col
+
+            # distancia estimada a partir de la heurística
+            adj_node.hd = h(r_target, c_target, r_nodo, c_nodo)
+
+        # valor actual del g
+        curr_g = self.g + weight_s2ad
+
         # adj_node is a node in nodes_dist_dic
-        #  distancia nodo adj >   distancia hasta ese nodo + peso
-        if adj_node.d  > self.d + weight_s2ad:
-            adj_node.d = self.d + weight_s2ad
+        #  distancia previa desde el origen hasta ese nodo es mayor que la nueva
+        # distancia calculada
+        if adj_node.g  > curr_g:
+
+            # si ya está en open, hay que reemplazarlo
+            tup2check = (adj_node.d, adj_node.coords())
+            if tup2check in opn:
+                opn.remove(tup2check)
+
+            adj_node.g = curr_g
+
+            #  f(x)    =     g(x)   +     h(x)
+            adj_node.d = adj_node.g + adj_node.hd
             t = adj_node.d
             #print(adj_node.coords())
             #print(Q)
@@ -84,16 +103,23 @@ class Node():
             adj_node.pre = self
         return opn
 
-    def relaxing_adjNodes_aS(self, opn , cls):
+    def relaxing_adjNodes_aS(self, r_target, c_target, opn , cls, h = manhattan):
         '''
         método para "relajar" los nodos adjacentes a self
 
+        r_target -> fila del target (0-based)
+        c_target -> columna del target (0-based)
         opn -> nodos aun no evaluados
         cls -> nodos ya evaluados
+        h -> heurística, en este caso emplearemos la distancia de Manhattan
         '''
         #
-        for key, val in self.nodes_dist_dic.items():
-            opn = self.relax(key, val, opn)
+        for nodo, dist in self.nodes_dist_dic.items():
+
+            # si el nodo encontrado no se encuentra en los nodos ya explorados
+            # entonces entra a la relajación uwu
+            if nodo not in cls:
+                opn = self.relax(r_target, c_target, nodo, dist, opn, h)
             #print(val)
             #print(key.pre.d)
         return opn
@@ -215,12 +241,12 @@ class Grid:
                 self.space[r][c].init_single_source_node(row_p, col_p)
 
 
-def manhattan(r_target, c_target, r_origin, c_origin):
+def manhattan(r_target, c_target, r_nodo, c_nodo):
     '''
     distancia de Manhattan
     empleada como heurística para el algoritmo A*
     '''
-    return abs(r_target - r_origin) + abs(c_target - c_origin)
+    return abs(r_target - r_nodo) + abs(c_target - c_nodo)
 
 # función para remover los nodos nodo de un heap
 def remove_nodes(Q, nodo):
@@ -326,14 +352,13 @@ def a_star(generatedGrid, r_target, c_target, r_origin, c_origin):
         if cds == (r_target, c_target):
             break
 
-
         # considering only those nodes NOT YET EVALUATED
         opn = nodito.relaxing_adjNodes_aS(opn, cls)
         #print(Q)
         # removemos nodos repetidos, esto es, nodos en S
-        for cons_node in S:
+        #for cons_node in S:
             #print(cons_node)
-            opn = remove_nodes(opn, cons_node)
+            #opn = remove_nodes(opn, cons_node)
 
     # create the animation from the list of figures
     ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True, repeat_delay=1000)
@@ -342,6 +367,15 @@ def a_star(generatedGrid, r_target, c_target, r_origin, c_origin):
 
     # get the list of the previous nodes
     return S, list_anims
+
+####################################################
+####
+#### TEST 1
+####
+#### Obj: probar que se generan las aristas de forma adecuada
+#### procedimiento: con la longitud de la lista de adyacencia
+####     se obtendrán todos los vecinos
+####################################################
 
 #nodo1 = Node(0,0)
 #nodo2 = Node(1,1)
@@ -403,22 +437,22 @@ def a_star(generatedGrid, r_target, c_target, r_origin, c_origin):
 #### procedimiento: probar dijkstra
 ####################################################
 #print(type(1.5))
-path_csv = "maze_tst.csv"
-espacio = Grid(0,0)
-espacio.add_obst_csv(path_csv, obst = "0")
-espacio.generate_edges()
-# inicializamos los nodos
-r_target=  1
-c_target=  1
-r_origin= 41
-c_origin= 41
-
-espacio.init_single_source_grid(r_origin, c_origin)
-S, list_anims = dijkstra(espacio, r_target, c_target, r_origin, c_origin)
-
-pt = get_path(espacio,r_target, c_target)
-show_path(pt, espacio)
-plt.show()
+# path_csv = "maze_tst.csv"
+# espacio = Grid(0,0)
+# espacio.add_obst_csv(path_csv, obst = "0")
+# espacio.generate_edges()
+# # inicializamos los nodos
+# r_target=  1
+# c_target=  1
+# r_origin= 41
+# c_origin= 41
+#
+# espacio.init_single_source_grid(r_origin, c_origin)
+# S, list_anims = dijkstra(espacio, r_target, c_target, r_origin, c_origin)
+#
+# pt = get_path(espacio,r_target, c_target)
+# show_path(pt, espacio)
+# plt.show()
 #fig = plt.figure()
 #ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True,
                                 #repeat_delay=1000)
