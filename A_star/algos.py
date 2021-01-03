@@ -7,6 +7,7 @@ import csv
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+import copy # copia de la instancia
 
 # clase del nodito
 # a partir de la información de la fila + columna
@@ -243,6 +244,113 @@ class Grid:
                 self.space[r][c].init_single_source_node(row_p, col_p)
 
 
+# clase para los clientes
+class Customer():
+    '''
+    clase para los clientes dentro del local
+    '''
+
+    def __init__(self, r_pos, c_pos, l_ubic):
+        '''
+        constructor
+
+        r_pos -> posición de la fila (0-based)
+        c_pos -> posición de la columna (0-based)
+        l_ubic -> lista de las ubicaciones (tuplas) a visitar: [ (r,c), (r,c), ... ]
+        '''
+        self.row = r_pos
+        self.col = c_pos
+        self.l_2visit = l_ubic
+        # tiempo que lleva en la tiendita
+        self.time = 0
+        self.camino = []
+
+        self.next = None
+        self.prev = None
+
+    def get_path(self, finishedAS, r_target, c_target):
+        '''
+        método para tener el path desde el origen hasta el destino
+
+        finishedAS -> instancia de Grid que ya ha pasado por A* y terminado
+        r_target -> fila de la ubicación del destino
+        c_target -> columna de la ubicación del destino
+        '''
+        pt = [(r_target,c_target)]
+        nodito = finishedAS.space[r_target][c_target]
+        while nodito.pre:
+            # en posición 0 insertamos el nodo previo
+            nodito = nodito.pre
+            pt.insert(0, nodito.coords())
+
+        self.camino = pt
+
+
+    def generate_path_AS(self, generatedGrid, h):
+        '''
+        método para generar el path a partir del algoritmo A*
+
+        generatedGrid -> instancia de Grid que corresponde a un mapa completo, las edges ya han sido generadas
+        h -> heurística, en este caso emplearemos la distancia de Manhattan
+        '''
+
+        # popeamos de la lista un elemento, no necesariamente está en orden
+        # pop devuelve el último elemento
+        nxt_item_in = self.l_2visit.pop()
+        # terminología
+        r_target = nxt_item_in[0]
+        c_target = nxt_item_in[1]
+
+        # row number and column number of the grid
+        t_rows = len(generatedGrid.space)
+        t_cols = len(generatedGrid.space[0])
+
+        # copia de la instancia de Grid
+        customerGrid = copy.deepcopy(generatedGrid)
+
+        # terminología
+        r_origin = self.row
+        c_origin = self.col
+
+        # inicialización para ese customer, posición adecuada
+        customerGrid.init_single_source_grid(r_origin, c_origin)
+
+        # nodo de origen
+        s_node = customerGrid.space[r_origin][c_origin]
+
+        # initialize evaluated nodes (cls) and not yet evaluated nodes (opn)
+        opn = [(s_node.d, s_node.coords())]
+        cls = []
+
+        # heapify the opn list to get the smallest element
+        heapq.heapify(opn)
+
+        while len(opn) > 0:
+
+            # get the minimum distance of the heap
+            dist, cds = heapq.heappop(opn)
+
+            #testeo
+            print(cds)
+
+            # add "node" to cls
+            cls.append(cds)
+
+            # last extracted node's information
+            nodito = customerGrid.space[cds[0]][cds[1]]
+
+            #S.append(cds)
+            if cds == (r_target, c_target):
+                break
+
+            # considering only those nodes NOT YET EVALUATED
+            opn = nodito.relaxing_adjNodes_aS(r_target, c_target, opn , cls, h)
+
+        # generación del path
+        self.get_path(customerGrid, r_target, c_target)
+
+
+
 def manhattan(r_target, c_target, r_nodo, c_nodo):
     '''
     distancia de Manhattan
@@ -296,7 +404,7 @@ def show_path(pt, finishedAS):
     plt.show()
 
 
-def a_star(generatedGrid, r_target, c_target, r_origin, c_origin, h):
+def a_star(generatedGrid, r_target, c_target, r_origin, c_origin, h, filename):
     '''
     Implementación del algoritmo A*
 
@@ -373,7 +481,7 @@ def a_star(generatedGrid, r_target, c_target, r_origin, c_origin, h):
                                     repeat_delay=1000)
     Writer = animation.writers['ffmpeg']
     writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-    ani.save("test_dijkstra.mp4", writer = writer)
+    ani.save(filename, writer = writer)
 
     # create the animation from the list of figures
     #ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True, repeat_delay=500)
@@ -429,7 +537,30 @@ def a_star(generatedGrid, r_target, c_target, r_origin, c_origin, h):
 #### Obj: probar que el algos A* funciona
 #### procedimiento: probar a_star
 ####################################################
-path_csv = "maze_tst.csv"
+# path_csv = "maze_tst.csv"
+# espacio = Grid(0,0)
+# espacio.add_obst_csv(path_csv, obst = "0")
+# espacio.generate_edges()
+# # inicializamos los nodos
+# r_target=  1
+# c_target=  1
+# r_origin= 41
+# c_origin= 41
+#
+# espacio.init_single_source_grid(r_origin, c_origin)
+# S, list_anims = a_star(espacio, r_target, c_target, r_origin, c_origin, manhattan)
+#
+# pt = get_path(espacio,r_target, c_target)
+# show_path(pt, espacio)
+####################################################
+####
+#### estatus: aprobado - obtiene una animación + la solución
+####
+####################################################
+# ------------------------------------------------------------------------------
+###############################################################
+#########     Program
+path_csv = "maze_1.csv"
 espacio = Grid(0,0)
 espacio.add_obst_csv(path_csv, obst = "0")
 espacio.generate_edges()
@@ -439,14 +570,10 @@ c_target=  1
 r_origin= 41
 c_origin= 41
 
+filename = "maze_1.mp4"
 espacio.init_single_source_grid(r_origin, c_origin)
-S, list_anims = a_star(espacio, r_target, c_target, r_origin, c_origin, manhattan)
+S, list_anims = a_star(espacio, r_target, c_target, r_origin, c_origin,
+                        manhattan, filename)
 
 pt = get_path(espacio,r_target, c_target)
-#show_path(pt, espacio)
-####################################################
-####
-#### estatus: aprobado - obtiene una animación + la solución
-####
-####################################################
-# ------------------------------------------------------------------------------
+show_path(pt, espacio)
