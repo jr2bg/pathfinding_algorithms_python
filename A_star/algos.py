@@ -16,6 +16,8 @@ class Node():
         self.nodes_dist_dic = {}
         self.row = row
         self.col = col
+        # heuristic distance
+        self.hd = None
 
     def coords(self):
         # función que da las coordenadas del nodito
@@ -48,7 +50,7 @@ class Node():
             self.d = float("inf")
             self.g = float("inf")
             # heuristic distance
-            self.hd = None
+            #self.hd = None
         # nodo predecesor
         self.pre = None
 
@@ -103,7 +105,7 @@ class Node():
             adj_node.pre = self
         return opn
 
-    def relaxing_adjNodes_aS(self, r_target, c_target, opn , cls, h = manhattan):
+    def relaxing_adjNodes_aS(self, r_target, c_target, opn , cls, h):
         '''
         método para "relajar" los nodos adjacentes a self
 
@@ -224,7 +226,7 @@ class Grid:
                 if j > 0 and not self.space[i][j-1].iso:
                     tmp.add_edge(self.space[i][j-1])
 
-                ##### A BORRAR
+                ##### A BORRAR, SOLO TEST DE GENERACIÓN ADECUADA DE EDGES
                 #print(len(tmp.nodes_dist_dic), end = " ")
             #print()
 
@@ -288,13 +290,13 @@ def get_path(finishedAS, r_target, c_target):
 
 def show_path(pt, finishedAS):
     for par in pt:
-        # path color : 5
-        finishedAS.display[par[0]][par[1]] = 5
+        # path color : 20
+        finishedAS.display[par[0]][par[1]] = 20
     plt.imshow(finishedAS.display)
     plt.show()
 
 
-def a_star(generatedGrid, r_target, c_target, r_origin, c_origin):
+def a_star(generatedGrid, r_target, c_target, r_origin, c_origin, h):
     '''
     Implementación del algoritmo A*
 
@@ -303,6 +305,7 @@ def a_star(generatedGrid, r_target, c_target, r_origin, c_origin):
     c_target -> columna del target (0-based)
     r_origin -> fila del origen (0-based)
     c_origin -> columna del origen (0-based)
+    h -> heurística, en este caso emplearemos la distancia de Manhattan
     '''
     # row number and column number of the grid
     t_rows = len(generatedGrid.space)
@@ -335,14 +338,17 @@ def a_star(generatedGrid, r_target, c_target, r_origin, c_origin):
         # get the minimum distance of the heap
         dist, cds = heapq.heappop(opn)
 
+        #testeo
+        print(cds)
+
         # add "node" to cls
         cls.append(cds)
 
         # last extracted node's information
         nodito = generatedGrid.space[cds[0]][cds[1]]
 
-        # explored color : 3
-        generatedGrid.display[cds[0]][cds[1]] = 3
+        # explored color : 10
+        generatedGrid.display[cds[0]][cds[1]] = 10
         img = plt.imshow(generatedGrid.display)
         list_anims.append([img])
         #plt.pause(0.01)
@@ -353,113 +359,94 @@ def a_star(generatedGrid, r_target, c_target, r_origin, c_origin):
             break
 
         # considering only those nodes NOT YET EVALUATED
-        opn = nodito.relaxing_adjNodes_aS(opn, cls)
+        opn = nodito.relaxing_adjNodes_aS(r_target, c_target, opn , cls, h)
         #print(Q)
         # removemos nodos repetidos, esto es, nodos en S
         #for cons_node in S:
             #print(cons_node)
             #opn = remove_nodes(opn, cons_node)
 
+    print( "#####       FINISHED A*      ######")
+
+    #usando ffmpeg
+    ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True,
+                                    repeat_delay=1000)
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+    ani.save("test_dijkstra.mp4", writer = writer)
+
     # create the animation from the list of figures
-    ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True, repeat_delay=1000)
-    writergif = animation.PillowWriter(fps=5)
-    ani.save('filename.gif',writer=writergif)
+    #ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True, repeat_delay=500)
+    #writergif = animation.PillowWriter(fps=5)
+    #ani.save('filename.gif',writer=writergif)
 
     # get the list of the previous nodes
-    return S, list_anims
+    return cls, list_anims
 
+# ------------------------------------------------------------------------------
 ####################################################
 ####
 #### TEST 1
 ####
-#### Obj: probar que se generan las aristas de forma adecuada
-#### procedimiento: con la longitud de la lista de adyacencia
-####     se obtendrán todos los vecinos
+#### Obj: probar que se genera el mapa de forma adecuada
+#### procedimiento: usar solo la clase GRID y generar el espacio a partir de un
+####                  csv
 ####################################################
-
-#nodo1 = Node(0,0)
-#nodo2 = Node(1,1)
-
-#nodo1.add_edge(nodo2)
-
-#nodo1.init_single_source_node(0,0)
-#nodo2.init_single_source_node(0,0)
-
-#nodo1.relaxing_adjNodes()
-
-#print(nodo2.pre.d)
-
-#espacio = Grid(2,2)
-
-#espacio.generate_space()
-
-#espacio.init_single_source_grid(1,1)
-
+#path_csv = "maze_tst.csv"
+#espacio = Grid(0,0)
+#espacio.add_obst_csv(path_csv, obst = "0")
+#plt.imshow(espacio.display)
+#plt.show()
+####################################################
+####
+#### estatus: aprobado. Genera el grid sin inconvenientes
+####
+####################################################
+# ------------------------------------------------------------------------------
+####################################################
+####
+#### TEST 2
+####
+#### Obj: probar que se generan las aristas de forma adecuada
+#### procedimiento: imprimir el número de edges para cada casilla abierta
+####################################################
+#path_csv = "maze_tst.csv"
+#espacio = Grid(0,0)
+#espacio.add_obst_csv(path_csv, obst = "0")
+#espacio.generate_edges()    ##
+#plt.imshow(espacio.display)
+#plt.show()
+####################################################
+####
+#### estatus: aprobado. imprime el número de aristas
+####
+####################################################
+# ------------------------------------------------------------------------------
 ####################################################
 ####
 #### TEST 3
 ####
-#### Obj: probar que se genera el laberinto a partir de un
-#### csv y que lo imprime
+#### Obj: probar que el algos A* funciona
+#### procedimiento: probar a_star
 ####################################################
-#path_csv = "maze_tst.csv"
-#espacio = Grid(0,0)
-#
-## los obstáculos tienen caracter "0"
-#espacio.add_obst_csv(path_csv, obst = "0")
-#plt.imshow(espacio.display)
-#plt.show()
-## RESULTADO: COMPLETADO
-## Cambios: se invirtió el caracter entre libres y obst fijos
+path_csv = "maze_tst.csv"
+espacio = Grid(0,0)
+espacio.add_obst_csv(path_csv, obst = "0")
+espacio.generate_edges()
+# inicializamos los nodos
+r_target=  1
+c_target=  1
+r_origin= 41
+c_origin= 41
 
+espacio.init_single_source_grid(r_origin, c_origin)
+S, list_anims = a_star(espacio, r_target, c_target, r_origin, c_origin, manhattan)
 
+pt = get_path(espacio,r_target, c_target)
+#show_path(pt, espacio)
 ####################################################
 ####
-#### TEST 4
+#### estatus: aprobado - obtiene una animación + la solución
 ####
-#### Obj: probar que se generan las aristas de forma adecuada
-#### procedimiento: con la longitud de la lista de adyacencia
-####     se obtendrán todos los vecinos
 ####################################################
-#path_csv = "maze_tst.csv"
-#espacio = Grid(0,0)
-#espacio.add_obst_csv(path_csv, obst = "0")
-## generación de las edges
-#espacio.generate_edges()
-## RESULTADO: COMPLETADO
-## Cambios: se imprimió la longitud de la lista de adyacencia, pero se borrará
-
-####################################################
-####
-#### TEST 5
-####
-#### Obj: probar que el algos de Dijkstra funciona
-#### procedimiento: probar dijkstra
-####################################################
-#print(type(1.5))
-# path_csv = "maze_tst.csv"
-# espacio = Grid(0,0)
-# espacio.add_obst_csv(path_csv, obst = "0")
-# espacio.generate_edges()
-# # inicializamos los nodos
-# r_target=  1
-# c_target=  1
-# r_origin= 41
-# c_origin= 41
-#
-# espacio.init_single_source_grid(r_origin, c_origin)
-# S, list_anims = dijkstra(espacio, r_target, c_target, r_origin, c_origin)
-#
-# pt = get_path(espacio,r_target, c_target)
-# show_path(pt, espacio)
-# plt.show()
-#fig = plt.figure()
-#ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True,
-                                #repeat_delay=1000)
-#Writer = animation.writers['ffmpeg']
-#writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-#ani.save("test_dijkstra.mp4", writer = writer)
-#plt.show()
-#writergif = animation.PillowWriter(fps=30)
-#ani.save('filename.gif',writer=writergif)
-#print(S)
+# ------------------------------------------------------------------------------
