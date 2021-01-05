@@ -667,6 +667,32 @@ def a_star(generatedGrid, r_target, c_target, r_origin, c_origin, h, filename):
 #### Obj: probar la clase SimulationCustomersGrid
 #### procedimiento: usar la clase para generar el mapita uwu
 ####################################################
+# path_csv = "maze_class_1.csv"
+# # inicialización de la clase
+# store_sim = SimulationCustomersGrid()
+# # generación de la teselación
+# store_sim.generateStore(path_csv)
+# # pusheando dos clientes uwu
+# r_pos= 1
+# c_pos= 3
+# l_ubic = [(7,14)]
+# store_sim.pushCustomer(r_pos, c_pos, l_ubic)
+#
+# r_pos= 18
+# c_pos= 11
+# l_ubic = [(29,17)]
+# store_sim.pushCustomer(r_pos, c_pos, l_ubic)
+# # all paths
+# store_sim.allPaths(manhattan)
+
+####################################################
+####
+#### estatus: APROBADO
+####################################################
+# ------------------------------------------------------------------------------
+
+###############################################################
+#########     Program
 path_csv = "maze_class_1.csv"
 # inicialización de la clase
 store_sim = SimulationCustomersGrid()
@@ -682,32 +708,12 @@ r_pos= 18
 c_pos= 11
 l_ubic = [(29,17)]
 store_sim.pushCustomer(r_pos, c_pos, l_ubic)
+
+
+r_pos= 7
+c_pos= 35
+l_ubic = [(23,15)]
+store_sim.pushCustomer(r_pos, c_pos, l_ubic)
+
 # all paths
 store_sim.allPaths(manhattan)
-
-####################################################
-####
-#### estatus: NO PASADO.
-#### RecursionError: maximum recursion depth exceeded while calling a Python object
-####################################################
-# ------------------------------------------------------------------------------
-
-###############################################################
-#########     Program
-# path_csv = "maze_1.csv"
-# espacio = Grid(0,0)
-# espacio.add_obst_csv(path_csv, obst = "0")
-# espacio.generate_edges()
-# # inicializamos los nodos
-# r_target=  1
-# c_target=  1
-# r_origin= 41
-# c_origin= 41
-#
-# filename = "maze_1.mp4"
-# espacio.init_single_source_grid(r_origin, c_origin)
-# S, list_anims = a_star(espacio, r_target, c_target, r_origin, c_origin,
-#                         manhattan, filename)
-#
-# pt = get_path(espacio,r_target, c_target)
-# show_path(pt, espacio)
