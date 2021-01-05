@@ -7,6 +7,9 @@ import csv
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+import sys
+sys.setrecursionlimit(10000)
+
 import copy # copia de la instancia
 
 # clase del nodito
@@ -263,8 +266,15 @@ class Customer():
         self.l_2visit = l_ubic
         # tiempo que lleva en la tiendita
         self.time = 0
+
+        # camino a seguir, se obtiene a partir de A*
         self.camino = []
 
+        # si va a pagar, a la salida o a donde
+        self.goes_paying = False
+        self.is_leaving = False
+
+        # para hacer una double linked list
         self.next = None
         self.prev = None
 
@@ -290,9 +300,15 @@ class Customer():
         '''
         método para generar el path a partir del algoritmo A*
 
-        generatedGrid -> instancia de Grid que corresponde a un mapa completo, las edges ya han sido generadas
+        generatedGrid -> instancia de Grid que corresponde a un mapa completo,
+                         edges ya generadas pero no hay "nodo inicial"
         h -> heurística, en este caso emplearemos la distancia de Manhattan
         '''
+
+        if len(self.l_2visit) <= 0:
+            # si ya no tiene lugares a visitar, que se dirija a pagar
+            self.goes_paying = True
+            return
 
         # popeamos de la lista un elemento, no necesariamente está en orden
         # pop devuelve el último elemento
@@ -305,7 +321,7 @@ class Customer():
         t_rows = len(generatedGrid.space)
         t_cols = len(generatedGrid.space[0])
 
-        # copia de la instancia de Grid
+        # copia de la instancia de Grid para poder inicializar A*
         customerGrid = copy.deepcopy(generatedGrid)
 
         # terminología
@@ -350,6 +366,90 @@ class Customer():
         self.get_path(customerGrid, r_target, c_target)
 
 
+class SimulationCustomersGrid():
+    '''
+    clase que realiza toda la simulación, es hijo de Grid, pues a partir
+    de él se va a obtener y manipular la teselación a imprimir
+    '''
+
+    def __init__(self):
+        '''
+        constructor para la inicialialización del Grid y la lista de clientes
+        '''
+        self.grid = Grid(0,0)
+        self.customers = []
+
+    def numCustomers(self):
+        '''
+        método que proporciona el número de clientes en la tiendita
+        '''
+
+        return len(self.customers)
+
+    def getChangeColor(self):
+        '''
+        método para obtener el delta del color para los clientes
+        '''
+        # 30 por ser el color para los espacios libres
+        self.delta_color = 30 / (self.numCustomers() + 1)
+
+    def pushCustomer(self, r_pos, c_pos, l_ubic):
+        '''
+        método para generar y pushear un cliente a la lista de clientes de la clase
+
+        r_pos -> posición de la fila (0-based)
+        c_pos -> posición de la columna (0-based)
+        l_ubic -> lista de las ubicaciones (tuplas) a visitar: [ (r,c), (r,c), ... ]
+        '''
+
+        # inicialización del cliente
+        customr = Customer(r_pos, c_pos, l_ubic)
+
+        #pusheo del cliente
+        self.customers.append(customr)
+
+    def generateStore(self, path_csv, obst = "0"):
+        '''
+        método para la generación de la superficie de la tienda a considerar
+        adecuadamente, para que los clientes puedan obtener el path
+
+        path_csv -> dirección del archivo csv con la forma de la teselación
+        obst -> caractér para un obstáculo
+        '''
+
+        self.grid.add_obst_csv(path_csv, obst)
+        self.grid.generate_edges()
+
+
+    def allPaths(self, h):
+        '''
+        método para generar los paths de todos los customers en la tienda
+        usando A* y la heurística h
+
+        h -> heurística, en este caso emplearemos la distancia de Manhattan
+        '''
+
+        #n_clientes = self.numCustomers()
+        self.getChangeColor()
+        colr = self.delta_color
+
+        to_plot = copy.deepcopy(self.grid.display)
+
+        # para cada cliente ...
+        for i_c in range(self.numCustomers()):
+            # generamos su path
+            self.customers[i_c].generate_path_AS(self.grid, h)
+
+            # para cada celda en el camino
+            # la marcamos con el color asociado
+            for square in self.customers[i_c].camino:
+                #self.grid.display[square[0]][square[1]] = colr
+                to_plot[square[0]][square[1]] = colr
+
+            colr += self.delta_color
+
+        plt.imshow(to_plot)
+        plt.show()
 
 def manhattan(r_target, c_target, r_nodo, c_nodo):
     '''
@@ -496,48 +596,105 @@ def a_star(generatedGrid, r_target, c_target, r_origin, c_origin, h, filename):
 ####
 #### TEST 1
 ####
-#### Obj: probar que se genera el mapa de forma adecuada
-#### procedimiento: usar solo la clase GRID y generar el espacio a partir de un
-####                  csv
+#### Obj: probar la clase SimulationCustomersGrid
+#### procedimiento: usar la clase para generar el mapita uwu
 ####################################################
-#path_csv = "maze_tst.csv"
-#espacio = Grid(0,0)
-#espacio.add_obst_csv(path_csv, obst = "0")
-#plt.imshow(espacio.display)
-#plt.show()
+# path_csv = "maze_class_1.csv"
+# # inicialización de la clase
+# store_sim = SimulationCustomersGrid()
+# # generación de la teselación
+# store_sim.generateStore(path_csv)
+# # pusheando dos clientes uwu
+# r_pos= 1
+# c_pos= 3
+# l_ubic = [(7,14)]
+# store_sim.pushCustomer(r_pos, c_pos, l_ubic)
+#
+# r_pos= 18
+# c_pos= 11
+# l_ubic = [(29,17)]
+# store_sim.pushCustomer(r_pos, c_pos, l_ubic)
+# # all paths
+# store_sim.allPaths(manhattan)
+
 ####################################################
 ####
-#### estatus: aprobado. Genera el grid sin inconvenientes
-####
+#### estatus: NO PASADO.
+#### RecursionError: maximum recursion depth exceeded while calling a Python object
 ####################################################
 # ------------------------------------------------------------------------------
 ####################################################
 ####
 #### TEST 2
 ####
-#### Obj: probar que se generan las aristas de forma adecuada
+#### Obj: probar que no se satura el stack
 #### procedimiento: imprimir el número de edges para cada casilla abierta
 ####################################################
 #path_csv = "maze_tst.csv"
 #espacio = Grid(0,0)
 #espacio.add_obst_csv(path_csv, obst = "0")
-#espacio.generate_edges()    ##
-#plt.imshow(espacio.display)
-#plt.show()
+#espacio.generate_edges()
+#
+#new_espacio = [[espacio[r][c] for c in range(espacio.n_cols)] for r in range(espacio.n_rows)]
 ####################################################
 ####
-#### estatus: aprobado. imprime el número de aristas
-####
+#### estatus: NO PASADO
+#### TypeError: 'Grid' object does not support indexing
 ####################################################
 # ------------------------------------------------------------------------------
 ####################################################
 ####
 #### TEST 3
 ####
-#### Obj: probar que el algos A* funciona
-#### procedimiento: probar a_star
+#### Obj: probar que la copia funciona
+#### procedimiento: se aumentó el límite de la recursión
 ####################################################
 # path_csv = "maze_tst.csv"
+# espacio = Grid(0,0)
+# espacio.add_obst_csv(path_csv, obst = "0")
+# espacio.generate_edges()
+# new_espacio = copy.deepcopy(espacio)
+####################################################
+####
+#### estatus: aprobado
+####
+####################################################
+# ------------------------------------------------------------------------------
+####################################################
+####
+#### TEST 4
+####
+#### Obj: probar la clase SimulationCustomersGrid
+#### procedimiento: usar la clase para generar el mapita uwu
+####################################################
+path_csv = "maze_class_1.csv"
+# inicialización de la clase
+store_sim = SimulationCustomersGrid()
+# generación de la teselación
+store_sim.generateStore(path_csv)
+# pusheando dos clientes uwu
+r_pos= 1
+c_pos= 3
+l_ubic = [(7,14)]
+store_sim.pushCustomer(r_pos, c_pos, l_ubic)
+
+r_pos= 18
+c_pos= 11
+l_ubic = [(29,17)]
+store_sim.pushCustomer(r_pos, c_pos, l_ubic)
+# all paths
+store_sim.allPaths(manhattan)
+
+####################################################
+####
+#### estatus: NO PASADO.
+#### RecursionError: maximum recursion depth exceeded while calling a Python object
+####################################################
+# ------------------------------------------------------------------------------
+
+###############################################################
+#########     Program
+# path_csv = "maze_1.csv"
 # espacio = Grid(0,0)
 # espacio.add_obst_csv(path_csv, obst = "0")
 # espacio.generate_edges()
@@ -547,33 +704,10 @@ def a_star(generatedGrid, r_target, c_target, r_origin, c_origin, h, filename):
 # r_origin= 41
 # c_origin= 41
 #
+# filename = "maze_1.mp4"
 # espacio.init_single_source_grid(r_origin, c_origin)
-# S, list_anims = a_star(espacio, r_target, c_target, r_origin, c_origin, manhattan)
+# S, list_anims = a_star(espacio, r_target, c_target, r_origin, c_origin,
+#                         manhattan, filename)
 #
 # pt = get_path(espacio,r_target, c_target)
 # show_path(pt, espacio)
-####################################################
-####
-#### estatus: aprobado - obtiene una animación + la solución
-####
-####################################################
-# ------------------------------------------------------------------------------
-###############################################################
-#########     Program
-path_csv = "maze_1.csv"
-espacio = Grid(0,0)
-espacio.add_obst_csv(path_csv, obst = "0")
-espacio.generate_edges()
-# inicializamos los nodos
-r_target=  1
-c_target=  1
-r_origin= 41
-c_origin= 41
-
-filename = "maze_1.mp4"
-espacio.init_single_source_grid(r_origin, c_origin)
-S, list_anims = a_star(espacio, r_target, c_target, r_origin, c_origin,
-                        manhattan, filename)
-
-pt = get_path(espacio,r_target, c_target)
-show_path(pt, espacio)
