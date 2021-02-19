@@ -175,6 +175,8 @@ def f_nuevoPaso(Ped_i):
 def f_evationPairPedestrians(l_pedestrians, Grid):
     '''
     función que obtiene la evolución de los peatoncitos
+
+    aquí está el ciclo anidado
     '''
     for i in range(len(l_pedestrians)):
         for j in range(len(l_pedestrians)):
