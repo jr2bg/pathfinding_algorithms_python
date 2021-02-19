@@ -275,6 +275,10 @@ class Customer():
         self.goes_paying = False
         self.is_leaving = False
 
+        # posición al siguiente paso
+        self.r_nxt_p = None
+        self.c_nxt_p = None
+
         # para hacer una double linked list
         self.next = None
         self.prev = None
@@ -295,7 +299,11 @@ class Customer():
             pt.append(nodito.coords())
 
         # eliminamos el último, pues es el nodo actual???
-        #pt.pop()
+        pt.pop()
+
+        # le asignamos el siguiente elemento popiado si lo hay
+        if len(pt) > 0:
+            self.r_nxt_p, self.c_nxt_p = pt.pop()
 
         self.camino = pt
 
@@ -317,6 +325,7 @@ class Customer():
         # popeamos de la lista un elemento, no necesariamente está en orden
         # pop devuelve el último elemento
         nxt_item_in = self.l_2visit.pop()
+        # posiciones de los siguientes elementos de la lista de ubicaciones a visitar
         self.r_nxt = nxt_item_in[0]
         self.c_nxt = nxt_item_in[1]
 
@@ -376,15 +385,24 @@ class Customer():
         '''
         método para el movimiento de una casilla en una casilla de los peatones
         '''
-        # solo le quitamos un elemento al camino y que esa sea la nueva
-        # posición de nuestro cliente
-        self.row , self.col = self.camino.pop()
+        # actualización de la posición actual
+        self.row , self.col = self.r_nxt_p , self.c_nxt_p
+
+        # si hay al menos un elemento en la lista
+        if self.camino:
+            self.r_nxt_p , self.c_nxt_p = self.camino.pop()
+        # si no, que asigne none's
+        else:
+            self.r_nxt_p = None
+            self.c_nxt_p = None
 
     def checkReach(self):
         '''
         método para determinar si el cliente ha llegado o no a su destino
         '''
-        if self.row == self.r_nxt and self.col == self.c_nxt:
+        #if self.row == self.r_nxt and self.col == self.c_nxt:
+        # si ya no hay elemento siguiente
+        if not self.r_nxt_p and not self.c_nxt_p:
             self.has_reached = True
 
 
@@ -445,15 +463,14 @@ class SimulationCustomersGrid():
         self.grid.add_obst_csv(path_csv, obst)
         self.grid.generate_edges()
 
+    # COLLISION AVOIDANCE SYSTEM
+    def collisionPrediction(self):
+        '''
+        método para la predicción de colisiones, determina si hay múltiples clientes
+        que en el siguiente paso se encuentren en el mismo sitio. Cada cliente debe
+        verificar que no le estorba el paso a otro cliente
+        '''
 
-    # def onePath(self,n_c, h):
-    #     '''
-    #     método para generar los paths de todos los customers en la tienda
-    #     usando A* y la heurística h
-    #
-    #     n_c -> número del cliente
-    #     h -> heurística, en este caso emplearemos la distancia de Manhattan
-    #     '''
 
     def setColorPath(self, to_plot, i_c, colr):
         '''
@@ -532,20 +549,29 @@ class SimulationCustomersGrid():
             # crear una nueva teselación
             to_plot = copy.deepcopy(self.grid.display)
 
+            #n_clientes = self.numCustomers()
+            self.getChangeColor()
+            colr = self.delta_color
 
             # considerar solo los que se han movido y plotearlos
             mvmt = False
             # hacer la evolución del sistema
             for i_c in range(len(self.customers)):
 
+                # le damos colorcito a la ubicación actual y posterior del cliente
+                to_plot[self.customers[i_c].row][self.customers[i_c].col] = colr
 
                 if not self.customers[i_c].has_reached:
-                    self.setColorPath(to_plot, i_c, 10)
+                    to_plot[self.customers[i_c].r_nxt_p][self.customers[i_c].c_nxt_p] = colr + 4*self.delta_color/5
+                    # cambio de to_plot
+                    self.setColorPath(to_plot, i_c, colr)
                     mvmt = True
                     #evolución
                     self.customers[i_c].movement()
                     # chequeo
                     self.customers[i_c].checkReach()
+
+                colr += self.delta_color
 
 
             if not mvmt:
@@ -554,8 +580,18 @@ class SimulationCustomersGrid():
             img = plt.imshow(to_plot)
             self.plots.append([img])
 
+
+        # última imagen
+        to_plot = copy.deepcopy(self.grid.display)
+        self.getChangeColor()
+        colr = self.delta_color
+        for i_c in range(len(self.customers)):
+            to_plot[self.customers[i_c].row][self.customers[i_c].col] = colr
+            colr += self.delta_color
+        img = plt.imshow(to_plot)
+        self.plots.append([img])
+
         # generar la animación chingona nononono
-        # fig = plt.figure()
         ani = animation.ArtistAnimation(fig, self.plots, interval=100, blit=True,
                                         repeat_delay=1000)
         Writer = animation.writers['ffmpeg']
@@ -571,92 +607,92 @@ def manhattan(r_target, c_target, r_nodo, c_nodo):
     '''
     return abs(r_target - r_nodo) + abs(c_target - c_nodo)
 
-def a_star(generatedGrid, r_target, c_target, r_origin, c_origin, h, filename):
-    '''
-    Implementación del algoritmo A*
-
-    generatedGrid -> instancia de Grid que tiene ya tanto el mapa como el origen
-    r_target -> fila del target (0-based)
-    c_target -> columna del target (0-based)
-    r_origin -> fila del origen (0-based)
-    c_origin -> columna del origen (0-based)
-    h -> heurística, en este caso emplearemos la distancia de Manhattan
-    '''
-    # row number and column number of the grid
-    t_rows = len(generatedGrid.space)
-    t_cols = len(generatedGrid.space[0])
-
-    # nodo de origen
-    s_node = generatedGrid.space[r_origin][c_origin]
-
-    #generatedGrid.display[r_origin][c_origin] = 3
-    #generatedGrid.display[r_target][c_target] = 4
-    #Q = [(s_node.d, s_node.coords())]
-    #heapq.heapify(Q)
-    #S = []
-
-    # initialize evaluated nodes (cls) and not yet evaluated nodes (opn)
-    opn = [(s_node.d, s_node.coords())]
-    cls = []
-
-    # heapify the opn list to get the smallest element
-    heapq.heapify(opn)
-
-    # list to get the animations
-    list_anims = []
-
-    # figure initialization
-    fig = plt.figure()
-
-    while len(opn) > 0:
-
-        # get the minimum distance of the heap
-        dist, cds = heapq.heappop(opn)
-
-        #testeo
-        print(cds)
-
-        # add "node" to cls
-        cls.append(cds)
-
-        # last extracted node's information
-        nodito = generatedGrid.space[cds[0]][cds[1]]
-
-        # explored color : 10
-        generatedGrid.display[cds[0]][cds[1]] = 10
-        img = plt.imshow(generatedGrid.display)
-        list_anims.append([img])
-        #plt.pause(0.01)
-        #plt.show()
-
-        #S.append(cds)
-        if cds == (r_target, c_target):
-            break
-
-        # considering only those nodes NOT YET EVALUATED
-        opn = nodito.relaxing_adjNodes_aS(r_target, c_target, opn , cls, h)
-        #print(Q)
-        # removemos nodos repetidos, esto es, nodos en S
-        #for cons_node in S:
-            #print(cons_node)
-            #opn = remove_nodes(opn, cons_node)
-
-    print( "#####       FINISHED A*      ######")
-
-    #usando ffmpeg
-    ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True,
-                                    repeat_delay=1000)
-    Writer = animation.writers['ffmpeg']
-    writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-    ani.save(filename, writer = writer)
-
-    # create the animation from the list of figures
-    #ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True, repeat_delay=500)
-    #writergif = animation.PillowWriter(fps=5)
-    #ani.save('filename.gif',writer=writergif)
-
-    # get the list of the previous nodes
-    return cls, list_anims
+# def a_star(generatedGrid, r_target, c_target, r_origin, c_origin, h, filename):
+#     '''
+#     Implementación del algoritmo A*
+#
+#     generatedGrid -> instancia de Grid que tiene ya tanto el mapa como el origen
+#     r_target -> fila del target (0-based)
+#     c_target -> columna del target (0-based)
+#     r_origin -> fila del origen (0-based)
+#     c_origin -> columna del origen (0-based)
+#     h -> heurística, en este caso emplearemos la distancia de Manhattan
+#     '''
+#     # row number and column number of the grid
+#     t_rows = len(generatedGrid.space)
+#     t_cols = len(generatedGrid.space[0])
+#
+#     # nodo de origen
+#     s_node = generatedGrid.space[r_origin][c_origin]
+#
+#     #generatedGrid.display[r_origin][c_origin] = 3
+#     #generatedGrid.display[r_target][c_target] = 4
+#     #Q = [(s_node.d, s_node.coords())]
+#     #heapq.heapify(Q)
+#     #S = []
+#
+#     # initialize evaluated nodes (cls) and not yet evaluated nodes (opn)
+#     opn = [(s_node.d, s_node.coords())]
+#     cls = []
+#
+#     # heapify the opn list to get the smallest element
+#     heapq.heapify(opn)
+#
+#     # list to get the animations
+#     list_anims = []
+#
+#     # figure initialization
+#     fig = plt.figure()
+#
+#     while len(opn) > 0:
+#
+#         # get the minimum distance of the heap
+#         dist, cds = heapq.heappop(opn)
+#
+#         #testeo
+#         print(cds)
+#
+#         # add "node" to cls
+#         cls.append(cds)
+#
+#         # last extracted node's information
+#         nodito = generatedGrid.space[cds[0]][cds[1]]
+#
+#         # explored color : 10
+#         generatedGrid.display[cds[0]][cds[1]] = 10
+#         img = plt.imshow(generatedGrid.display)
+#         list_anims.append([img])
+#         #plt.pause(0.01)
+#         #plt.show()
+#
+#         #S.append(cds)
+#         if cds == (r_target, c_target):
+#             break
+#
+#         # considering only those nodes NOT YET EVALUATED
+#         opn = nodito.relaxing_adjNodes_aS(r_target, c_target, opn , cls, h)
+#         #print(Q)
+#         # removemos nodos repetidos, esto es, nodos en S
+#         #for cons_node in S:
+#             #print(cons_node)
+#             #opn = remove_nodes(opn, cons_node)
+#
+#     print( "#####       FINISHED A*      ######")
+#
+#     #usando ffmpeg
+#     ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True,
+#                                     repeat_delay=1000)
+#     Writer = animation.writers['ffmpeg']
+#     writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+#     ani.save(filename, writer = writer)
+#
+#     # create the animation from the list of figures
+#     #ani = animation.ArtistAnimation(fig, list_anims, interval=100, blit=True, repeat_delay=500)
+#     #writergif = animation.PillowWriter(fps=5)
+#     #ani.save('filename.gif',writer=writergif)
+#
+#     # get the list of the previous nodes
+#     return cls, list_anims
 
 # ------------------------------------------------------------------------------
 ####################################################
