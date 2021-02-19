@@ -4,13 +4,13 @@ def f_isfront2front(Ped_i, Ped_j):
     '''
     i_cur_r = Ped_i.row
     i_cur_c = Ped_i.col
-    i_nxt_r = Ped_i.next.row
-    i_nxt_c = Ped_i.next.col
+    i_nxt_r = Ped_i.r_nxt_p
+    i_nxt_c = Ped_i.c_nxt_p
 
     j_cur_r = Ped_j.row
     j_cur_c = Ped_j.col
-    j_nxt_r = Ped_j.next.row
-    j_nxt_c = Ped_j.next.col
+    j_nxt_r = Ped_j.r_nxt_p
+    j_nxt_c = Ped_j.c_nxt_p
 
     #posiciones actuales corresponden a los siguientes pasos del otro
     if i_cur_r == j_nxt_r and i_cur_c == j_nxt_c and i_nxt_r == j_cur_r and
@@ -23,11 +23,11 @@ def f_issame_cell_arrival(Ped_i, Ped_j):
     función que determina si los peatones llevan a la misma celda al siguiente
     paso
     '''
-    i_nxt_r = Ped_i.next.row
-    i_nxt_c = Ped_i.next.col
+    i_nxt_r = Ped_i.r_nxt_p
+    i_nxt_c = Ped_i.c_nxt_p
 
-    j_nxt_r = Ped_j.next.row
-    j_nxt_c = Ped_j.next.col
+    j_nxt_r = Ped_j.r_nxt_p
+    j_nxt_c = Ped_j.c_nxt_p
 
 
     if i_nxt_c == j_nxt_c and i_nxt_r == j_nxt_r:
@@ -40,13 +40,13 @@ def f_islet_pass(Ped_i, Ped_j):
     función que determina si al siguiente paso el peatón llega a una celda
     actualmente ocupada por un peatón que se desplaza
     '''
-    i_nxt_r = Ped_i.next.row
-    i_nxt_c = Ped_i.next.col
+    i_nxt_r = Ped_i.r_nxt_p
+    i_nxt_c = Ped_i.c_nxt_p
 
     j_cur_r = Ped_j.row
     j_cur_c = Ped_j.col
-    j_nxt_r = Ped_j.next.row
-    j_nxt_c = Ped_j.next.col
+    j_nxt_r = Ped_j.r_nxt_p
+    j_nxt_c = Ped_j.c_nxt_p
 
     if i_nxt_r == j_cur_r and j_cur_c == i_nxt_c and j_cur_r != j_nxt_r and
     j_cur_c != j_nxt_c:
@@ -61,15 +61,15 @@ def f_isto_waiter(Ped_i, Ped_j):
 
     TERMINAR: puede haber pobemas con el waiting
     '''
-    i_nxt_r = Ped_i.next.row
-    i_nxt_c = Ped_i.next.col
+    i_nxt_r = Ped_i.r_nxt_p
+    i_nxt_c = Ped_i.c_nxt_p
 
     j_cur_r = Ped_j.row
     j_cur_c = Ped_j.col
-    j_nxt_r = Ped_j.next.row
-    j_nxt_c = Ped_j.next.col
+    j_nxt_r = Ped_j.r_nxt_p
+    j_nxt_c = Ped_j.c_nxt_p
 
-    if i_nxt_r == j_cur_r and j_cur_c == i_nxt_c and Ped_j.estatus == "waiting":
+    if i_nxt_r == j_cur_r and j_cur_c == i_nxt_c and Ped_j.estado == "waiting":
         return True
     return False
 
@@ -83,8 +83,8 @@ def f_other_crosses(Ped_i, Ped_j):
 
     j_cur_r = Ped_j.row
     j_cur_c = Ped_j.col
-    j_nxt_r = Ped_j.next.row
-    j_nxt_c = Ped_j.next.col
+    j_nxt_r = Ped_j.r_nxt_p
+    j_nxt_c = Ped_j.c_nxt_p
     if  abs (i_cur_r - j_cur_r) + abs (i_cur_c - j_cur_c) == 1 and
       abs (i_cur_r - j_nxt_r) + abs (i_cur_c - j_nxt_c) == 1:
         return True
@@ -102,30 +102,49 @@ def f_iscross_diag(Ped_i, Ped_j):
 
 def generate5x5neigh(Ped_i):
     '''
-    función que genera la vecindad 5x5 que rodea a ped_i, considerando como
+    función que genera la vecindad 5x5 que rodea a Ped_i, considerando como
     obstáculos a todos los peatones y sus siguientes pasos en esta vecindad
 
-    TERMINAR LA CONSTRUCCIÓN, no todas las vecindades pueden ser de 5x5
+    TERMINAR: definir qué es obstaculo
+                definir si la celda central es obstáculo
+                definir qué es PEATON
+                definir obstNeigh(r,c): regresa cualquier obstáculo
     '''
-    if Ped_i.row > 1:
-        from_r = -2
-    else:
-        from_r = -2 +
-    neigh_ped_i = [[ for c in range(-2,3)] for r in range(-2,3)]
+    neigh_ped_i = [[0 for c in range(-2,3)] for r in range(-2,3)]
+
+    for r in range(-2,3):
+        for j in range(-2,3):
+            if r == 0 and j == 0:
+                neigh_ped_i[r][c] = "OBSTACULO????"
+                continue
+
+            if Ped_i.row - r < 0 or Ped_i.row + r >= NUM_ROWS or
+              Ped_i.col - c < 0 or Ped_i.col + c >= NUM_COLS:
+                neigh_ped_i[r][c] = "OBSTACULO"
+            else:
+                neigh_ped_i[r][c] = obstNeigh(r,c)
+                if Grid[r][c] == "PEATON":
+                    if Ped_i.row-2 <= Grid[r][c].PEATON.r_nxt_p  <= Ped_i.row+2 and
+                      Ped_i.col-2 <= Grid[r][c].PEATON.c_nxt_p  <= Ped_i.col+2:
+                        # el siguiente paso del peatón se vuelve un obstáculo
+                        neigh_ped_i[  Grid[r][c].PEATON.r_nxt_p - Ped_i.row ][ Grid[r][c].PEATON.c_nxt_p - Ped_i.col ] = "OBSTACULO"
 
     return neigh_ped_i
 
-def f_free_in_3x3(neigh_ped_i):
+def f_free_in_3x3(Ped_i, neigh_ped_i):
     '''
     función que devuelve una lista de diccionarios con las posiciones libres
     en una vecindad 3x3 con el origen el centro
 
-    TERMINAR EL CICLO
+    TERMINAR: definir OBSTACULO
     '''
     l_free = []
-    for celda in neigh_ped_i:
-        if celda != centro and celda.is_free():
-            l_free.append(celda)
+    for i in range(1,4):
+        for j in range(1,4):
+            if i  == 2 and j == 2:
+                continue
+            if neigh_ped_i[i][j] != "OBSTACULO":
+                l_free.append((Ped_i.row + i, Ped_i.col + j))
     return l_free
 
 
@@ -134,8 +153,8 @@ def f_free_next_cell(Ped_i, Grid):
     función para "liberar" a la siguiente casilla de Ped_i, en caso de que ya
     se considere ahí
     '''
-    nxt_r = Ped_i.next.row
-    nxt_c = Ped_i.next.col
+    nxt_r = Ped_i.r_nxt_p
+    nxt_c = Ped_i.c_nxt_p
     if Grid[nxt_r][nxt_c] == Ped_i:
         Grid[nxt_r][nxt_c] = None
 
@@ -147,13 +166,13 @@ def f_action2pedSameRoute(Ped_i, Ped_j, Grid):
     '''
     if Ped_i.inercia > Ped_j.inercia:
 
-        Ped_i.estatus = "walking"
-        nxt_r = Ped_i.next.row
-        nxt_c = Ped_i.next.col
+        Ped_i.estado = "walking"
+        nxt_r = Ped_i.r_nxt_p
+        nxt_c = Ped_i.c_nxt_p
         Grid[nxt_r][nxt_c] = Ped_i
 
     else:
-        Ped_i.estatus = "waiting"
+        Ped_i.estado = "waiting"
         f_free_next_cell(Ped_i, Grid)
 
 
@@ -179,20 +198,22 @@ def f_evationPairPedestrians(l_pedestrians, Grid):
     aquí está el ciclo anidado
     '''
     for i in range(len(l_pedestrians)):
+        Ped_i = l_pedestrians[i]
+        Ped_i.estado = "walking"
+
         for j in range(len(l_pedestrians)):
-            Ped_i = l_pedestrians[i]
             Ped_j = l_pedestrians[j]
 
             if j != i:
                 if f_isfront2front(Ped_i, Ped_j):
-                    Ped_i.estatus = "waiting"
+                    Ped_i.estado = "waiting"
                     if Ped_i.inercia < Ped_j.inercia:
                         f_free_next_cell(Ped_i, Grid)
                         f_nuevoPaso(Ped_i)
                     break
 
                 elif f_isto_waiter(Ped_i, Ped_j):
-                    Ped_i.estatus = "waiting"
+                    Ped_i.estado = "waiting"
                     f_free_next_cell(Ped_i, Grid)
                     f_nuevoPaso(Ped_i)
                     break

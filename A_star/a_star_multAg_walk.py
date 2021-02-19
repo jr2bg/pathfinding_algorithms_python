@@ -6,6 +6,7 @@ import heapq
 import csv
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import colisionDetectionNEvaluation as cde
 
 import sys
 sys.setrecursionlimit(10000)
@@ -262,6 +263,10 @@ class Customer():
         self.row = r_pos
         self.col = c_pos
         self.l_2visit = l_ubic
+
+        # estatus \in {"waiting", "walking"}
+        self.estado = "walking"
+
         # tiempo que lleva en la tiendita
         self.time = 0
 
